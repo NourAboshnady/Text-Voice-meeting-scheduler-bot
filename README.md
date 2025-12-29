@@ -43,6 +43,6 @@ This bot eliminates all of that by turning a simple Telegram message into a full
 ## Quick Start with Docker
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/meeting-scheduler-bot.git
+git clone https://github.com/NourAboshnady/Text-Voice-meeting-scheduler-bot
 cd meeting-scheduler-bot
 docker compose up -d
