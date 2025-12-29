@@ -44,5 +44,5 @@ This bot eliminates all of that by turning a simple Telegram message into a full
 
 ```bash
 git clone https://github.com/NourAboshnady/Text-Voice-meeting-scheduler-bot
-cd meeting-scheduler-bot
+cd Text-Voice-meeting-scheduler-bot
 docker compose up -d
