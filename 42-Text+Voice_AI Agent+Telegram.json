@@ -1,0 +1,567 @@
+{
+  "name": "42-Text+Voice_AI Agent+Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -448,
+        -16
+      ],
+      "id": "8ca2db8c-3669-4724-abfc-5f4345c47fbc",
+      "name": "Telegram Trigger",
+      "webhookId": "856e8606-1fc7-4dbf-8809-d6b65b8a8d5d",
+      "credentials": {
+        "telegramApi": {
+          "id": "ztWRvKJOBKi7OJmj",
+          "name": "Telegram account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-nano",
+          "mode": "list",
+          "cachedResultName": "gpt-5-nano"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        112
+      ],
+      "id": "1f25cfe2-f002-488e-8093-33e43a11bf44",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "NRpPqWI2Gdwehmr9",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        496,
+        80
+      ],
+      "id": "2df46fb7-9d88-4d08-a145-2b557ed7dc82",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }} ?? {{ $json.text }}",
+        "options": {
+          "systemMessage": "=# Meeting Scheduler Bot (no employee availability check)\n\nCoordinate 1-to-1 meetings between the Business Owner and a single employee: collect any missing details, **(optionally) check the owner’s calendar for conflicts**, confirm with the owner on Telegram, then **create the event** and notify the employee by email.\n\n## Context\n- User: Business Owner (Telegram).  Employees sheet: **Role | Name | Number | Email**.\n- Tone: friendly; Language: English.  Default duration: **1 hour**.\n- Timezone: All dates and times must be handled in Cairo time zone (Africa/Cairo, UTC+2) always use the current year.\n- Organizer: the Google Calendar node’s account (owner email not added to attendees).\n-response: concise\n\n## Responsibilities\n1) Parse request → if fields missing, ask **one compact question**.  \n2) Get employee email from Google Sheets by **Name**.  \n3) (If available) conflict-check owner calendar for `{start,end,timezone}`.  \n4) Show final summary → wait **Confirm / Edit / Cancel**.  \n5) After **Confirm**, create the calendar event and email the employee, send an email for owner and employee which contains all details then send Telegram confirmation to the owner.  \n6) Reset memory when done/cancelled.\n\n## Required Fields\nEmployee name; Date & time (with timezone); Duration (default 1h); Location (`office` or `video`); Title/agenda; Extra participants (optional emails).  \nIf `video`, obtain the **meeting link from Google Calendar** (conference data) and include it.\n\n## Tools\n- **Employees Info (Sheets—read):** lookup by Name → `{name,email,role,number}`.  \n- **Owner Calendar (Calendar—getMany events):** inputs `{start,end,timezone}`; conflict if `(event.start < end) AND (event.end > start)` and not cancelled.  \n- **Create Event (Calendar—create):** inputs `title,start,end,timezone,location/link,description,attendees:[employeeEmail,...extras]`; enable conference data; returns `eventLink` and `meetingLink`.  \n- **Employee_Not (Gmail—send):** send final meeting details to employee.  \n- **Telegram (send message):** prompts/summaries/confirmation.  \n- **Simple Memory:** session state with the memory key above.\n\n## instructions \n- After the owner confirm send to him a message \"Meeting scheduled successfully! ✅ You can now request another meeting.\" only \n- don't confirm (create meeting or json file ) or ask owner to confirm as long as there is a lack of information one he wrote confirm create meeting only once .\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        576,
+        -144
+      ],
+      "id": "a484a9cf-5762-4a6a-b123-5dfac2af8030",
+      "name": "GPT5"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1OUhcmSWQ-nJuqMcryINfFgz5rMZyPJ0nI3rw3CosQi4",
+          "mode": "list",
+          "cachedResultName": "Auto Meeting Shedular",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1OUhcmSWQ-nJuqMcryINfFgz5rMZyPJ0nI3rw3CosQi4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1OUhcmSWQ-nJuqMcryINfFgz5rMZyPJ0nI3rw3CosQi4/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        608,
+        144
+      ],
+      "id": "46cb23e8-93a3-42e7-8081-d0f9315c00e3",
+      "name": "Employee Database",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "KDXCmC91hN836Hso",
+          "name": "Google Sheets account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "emailType": "text",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        736,
+        96
+      ],
+      "id": "57829966-c1ce-414b-984a-20d4b04a1843",
+      "name": "Employee notification",
+      "webhookId": "1808210d-8396-4a9e-9614-e14f2e1683a1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3EuMXods9ASscsPM",
+          "name": "Gmail account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        -112
+      ],
+      "id": "e746b7f0-1029-4d28-a57d-d392aaa0bfc7",
+      "name": "Send a text message",
+      "webhookId": "831bff0d-b9e1-46a7-82fe-4909df0ad357",
+      "credentials": {
+        "telegramApi": {
+          "id": "ztWRvKJOBKi7OJmj",
+          "name": "Telegram account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "abwshnadynwr@gmail.com",
+          "mode": "list",
+          "cachedResultName": "abwshnadynwr@gmail.com"
+        },
+        "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+        "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('attendees0_Attendees', ``, 'string') }}"
+          ],
+          "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+          "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        864,
+        128
+      ],
+      "id": "58cdc958-9aed-471f-bbae-bd3caf2a2919",
+      "name": "Create an event in Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "mTDc2aQslZyM0lJ7",
+          "name": "Google Calendar account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "90757aeb-754b-4243-aa9e-aa851994bd4d",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -256,
+        -16
+      ],
+      "id": "5331b070-cb8b-4446-9fd1-c378bfaf1f25",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        64
+      ],
+      "id": "d0375382-33f6-497e-aa68-d3bd286c1e0f",
+      "name": "Get a file",
+      "webhookId": "118ab02b-398f-4816-a92f-060c8bae916a",
+      "credentials": {
+        "telegramApi": {
+          "id": "ztWRvKJOBKi7OJmj",
+          "name": "Telegram account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {
+          "language": "en"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        64,
+        64
+      ],
+      "id": "cfb803a4-4a6f-4e75-94b1-841686c81c92",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "NRpPqWI2Gdwehmr9",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f1911dc7-dc96-475e-be7f-337f82700374",
+              "leftValue": "={{ $('Telegram Trigger').item.json.message.text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1136,
+        -16
+      ],
+      "id": "40ab8a11-23b0-421a-8e13-4cb5a63fe6f5",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "input": "={{ $('GPT5').item.json.output }}",
+        "options": {
+          "response_format": "opus"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1360,
+        80
+      ],
+      "id": "038adb74-95da-42c4-a8b8-495097cc46a3",
+      "name": "Generate audio",
+      "credentials": {
+        "openAiApi": {
+          "id": "NRpPqWI2Gdwehmr9",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAudio",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1584,
+        80
+      ],
+      "id": "8439e5cf-aeae-4621-bc2f-540561327175",
+      "name": "Send an audio file",
+      "webhookId": "ee34cca7-57fe-451f-81e3-0b1a9bc5cb44",
+      "credentials": {
+        "telegramApi": {
+          "id": "ztWRvKJOBKi7OJmj",
+          "name": "Telegram account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Text | Voice Input Telegram Chat \n",
+        "height": 432,
+        "width": 688,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -480,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "3643f36c-0cf0-441e-a3ec-b34aeb944579",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Telegram's Output (text , voice)\n",
+        "height": 432,
+        "width": 720,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1104,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "161aa208-8170-4ab1-b488-3a199123eb88",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## GPT 5 \nFor the operating process",
+        "height": 432,
+        "width": 832
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        240,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "ebc79850-a83c-4c56-a8f6-7ee83a063def",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "GPT5",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "GPT5",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT5": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Employee Database": {
+      "ai_tool": [
+        [
+          {
+            "node": "GPT5",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Employee notification": {
+      "ai_tool": [
+        [
+          {
+            "node": "GPT5",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event in Google Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "GPT5",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "GPT5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "GPT5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate audio": {
+      "main": [
+        [
+          {
+            "node": "Send an audio file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "de65bc58-4ca0-4ef8-8c7b-7057cde25eb1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "70695a6d927b200a8508749cddad62985d833ec0704808dbc000995069c1db69"
+  },
+  "id": "cKrFo44qbTSDY4EN",
+  "tags": []
+}
